@@ -8,24 +8,26 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"time"
 )
 
 var db *sql.DB
 
 type NewsFeed struct {
-	Id        string `json:"id"`
-	Title     string `json:"title"`
-	Article   string `json:"article"`
-	Category  string `json:"category"`
-	TimeStamp string `json:"timeStamp"`
+	Id        string    `json:"id"`
+	Title     string    `json:"title"`
+	Article   string    `json:"article"`
+	Category  string    `json:"category"`
+	TimeStamp time.Time `json:"timeStamp"`
 }
 
 // the logic of handlers for all queries
-func HomePage(w http.ResponseWriter, r *http.Request) {
+
+func HomePage(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprintf(w, "Welcome to the HomePage!")
 	fmt.Println("Endpoint Hit: homePage")
 }
-func getAllArticles(w http.ResponseWriter, r *http.Request) {
+func getAllArticles(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var newsArticles []NewsFeed
 	rows, err := db.Query("SELECT id, title, article, category, createdAt FROM articles")
@@ -48,13 +50,9 @@ func getArticleHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
 	var newsArticle NewsFeed
-	row, _ := db.Query("SELECT id, title, article, category, createdAt FROM articles WHERE id = ?", id)
-	for row.Next() {
-		//var newsArticle NewsFeed
-		err := row.Scan(&newsArticle.Id, &newsArticle.Title, &newsArticle.Article, &newsArticle.Category, &newsArticle.TimeStamp)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err := db.QueryRow("SELECT id, title, article, category, createdAt FROM articles WHERE id = ?", id).Scan(&newsArticle.Id, &newsArticle.Title, &newsArticle.Article, &newsArticle.Category, &newsArticle.TimeStamp)
+	if err != nil {
+		log.Fatal(err)
 	}
 	json.NewEncoder(w).Encode(newsArticle)
 }
@@ -65,15 +63,15 @@ func createArticleHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	//newsArticle.TimeStamp = time.Now()
 	result, err := db.Exec("INSERT INTO articles (title, article, category, createdAt) VALUES (?,?,?,?)", newsArticle.Title, newsArticle.Article, newsArticle.Category, newsArticle.TimeStamp)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("result is:", result)
-	//newsArticle.Id, err = result.LastInsertId()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	newsArticle.Id, err = result.LastInsertId()
+	if err != nil {
+		log.Fatal(err)
+	}
 	json.NewEncoder(w).Encode(newsArticle)
 }
 func UpdateNewsPiece(w http.ResponseWriter, r *http.Request) {
@@ -93,10 +91,12 @@ func UpdateNewsPiece(w http.ResponseWriter, r *http.Request) {
 func DeleteNewsPiece(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-	_, err := db.Exec("DELETE FROM articles WHERE id = ?", params["id"])
+	id := params["id"]
+	_, err := db.Exec("DELETE FROM articles WHERE id = ?", id)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	json.NewEncoder(w).Encode("News article deleted successfully")
 }
 
@@ -105,11 +105,11 @@ func handleRequests() {
 	myRouter := mux.NewRouter()
 
 	myRouter.HandleFunc("/", HomePage)
-	myRouter.HandleFunc("/articles", getAllArticles)
-	myRouter.HandleFunc("/article/{id}", getArticleHandler)
+	myRouter.HandleFunc("/articles", getAllArticles).Methods("GET")
 	myRouter.HandleFunc("/article", createArticleHandler).Methods("POST")
-	myRouter.HandleFunc("/news/update/:id", UpdateNewsPiece).Methods("PUT")
-	myRouter.HandleFunc("/news/delete/:id", DeleteNewsPiece).Methods("DELETE")
+	myRouter.HandleFunc("/article/{id}", getArticleHandler).Methods("GET")
+	myRouter.HandleFunc("/article/update/:id", UpdateNewsPiece).Methods("PUT")
+	myRouter.HandleFunc("/article/delete/:id", DeleteNewsPiece).Methods("DELETE")
 
 	log.Fatal(http.ListenAndServe(":8000", myRouter))
 
