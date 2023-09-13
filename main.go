@@ -8,17 +8,16 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-	"time"
 )
 
 var db *sql.DB
 
 type NewsFeed struct {
-	Id        string    `json:"id"`
-	Title     string    `json:"title"`
-	Article   string    `json:"article"`
-	Category  string    `json:"category"`
-	TimeStamp time.Time `json:"timeStamp"`
+	Id        string `json:"id"`
+	Title     string `json:"title"`
+	Article   string `json:"article"`
+	Category  string `json:"category"`
+	TimeStamp string `json:"timeStamp"`
 }
 
 // the logic of handlers for all queries
@@ -64,13 +63,9 @@ func createArticleHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	//newsArticle.TimeStamp = time.Now()
-	result, err := db.Exec("INSERT INTO articles (title, article, category, createdAt) VALUES (?,?,?,?)", newsArticle.Title, newsArticle.Article, newsArticle.Category, newsArticle.TimeStamp)
-	if err != nil {
-		log.Fatal(err)
-	}
-	newsArticle.Id, err = result.LastInsertId()
-	if err != nil {
-		log.Fatal(err)
+	_, e := db.Exec("INSERT INTO articles (title, article, category) VALUES (?,?,?)", newsArticle.Title, newsArticle.Article, newsArticle.Category)
+	if e != nil {
+		log.Fatal(e)
 	}
 	json.NewEncoder(w).Encode(newsArticle)
 }
@@ -96,7 +91,6 @@ func DeleteNewsPiece(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	json.NewEncoder(w).Encode("News article deleted successfully")
 }
 
