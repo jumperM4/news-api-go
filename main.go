@@ -8,16 +8,17 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"time"
 )
 
 var db *sql.DB
 
 type NewsFeed struct {
-	Id        string `json:"id"`
-	Title     string `json:"title"`
-	Article   string `json:"article"`
-	Category  string `json:"category"`
-	TimeStamp string `json:"timeStamp"`
+	Id        string    `json:"id"`
+	Title     string    `json:"title"`
+	Article   string    `json:"article"`
+	Category  string    `json:"category"`
+	TimeStamp time.Time `json:"timeStamp"`
 }
 
 // the logic of handlers for all queries
@@ -77,7 +78,7 @@ func UpdateNewsPiece(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = db.Exec("UPDATE articles SET title = ?, article = ?, category = ?, timeStamp = ? WHERE id = ?", newsArticle.Title, newsArticle.Article, newsArticle.Category, newsArticle.TimeStamp, params["id"])
+	_, err = db.Exec("UPDATE articles SET title = ?, article = ?, category = ? WHERE id = ?", newsArticle.Title, newsArticle.Article, newsArticle.Category, params["id"])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,8 +103,8 @@ func handleRequests() {
 	myRouter.HandleFunc("/articles", getAllArticles).Methods("GET")
 	myRouter.HandleFunc("/article", createArticleHandler).Methods("POST")
 	myRouter.HandleFunc("/article/{id}", getArticleHandler).Methods("GET")
-	myRouter.HandleFunc("/article/update/:id", UpdateNewsPiece).Methods("PUT")
-	myRouter.HandleFunc("/article/delete/:id", DeleteNewsPiece).Methods("DELETE")
+	myRouter.HandleFunc("/article/update/{id}", UpdateNewsPiece).Methods("PUT")
+	myRouter.HandleFunc("/article/delete/{id}", DeleteNewsPiece).Methods("DELETE")
 
 	log.Fatal(http.ListenAndServe(":8000", myRouter))
 
